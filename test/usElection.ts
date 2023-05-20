@@ -1,4 +1,3 @@
-import { USElection__factory } from "./../typechain-types/factories/Election.sol/USElection__factory";
 import { USElection } from "./../typechain-types/Election.sol/USElection";
 import { expect } from "chai";
 import { ethers } from "hardhat";
@@ -24,7 +23,12 @@ describe("USElection", function () {
   });
 
   it("Should submit state results and get current leader", async function () {
-    const stateResults = ["California", 1000, 900, 32];
+    const stateResults: USElection.StateResultStruct = {
+      name: "California",
+      votesBiden: 1000,
+      votesTrump: 900,
+      stateSeats: 32,
+    };
 
     const submitStateResultsTx = await usElection.submitStateResult(
       stateResults
@@ -36,7 +40,12 @@ describe("USElection", function () {
   });
 
   it("Should throw when try to submit already submitted state results", async function () {
-    const stateResults = ["California", 1000, 900, 32];
+    const stateResults: USElection.StateResultStruct = {
+      name: "California",
+      votesBiden: 1000,
+      votesTrump: 900,
+      stateSeats: 32,
+    };
 
     expect(usElection.submitStateResult(stateResults)).to.be.revertedWith(
       "This state result was already submitted!"
@@ -44,7 +53,12 @@ describe("USElection", function () {
   });
 
   it("Should submit state results and get current leader", async function () {
-    const stateResults = ["Ohaio", 800, 1200, 33];
+    const stateResults: USElection.StateResultStruct = {
+      name: "Ohaio",
+      votesBiden: 800,
+      votesTrump: 1200,
+      stateSeats: 33,
+    };
 
     const submitStateResultsTx = await usElection.submitStateResult(
       stateResults
@@ -53,6 +67,51 @@ describe("USElection", function () {
     await submitStateResultsTx.wait();
 
     expect(await usElection.currentLeader()).to.equal(2); // TRUMP
+  });
+
+  //TODO: ADD YOUR TESTS
+  it("Should throw when try to submit state results with 0 seats", async function () {
+    const stateResults: USElection.StateResultStruct = {
+      name: "Texas",
+      votesBiden: 1000,
+      votesTrump: 900,
+      stateSeats: 0,
+    };
+
+
+    expect(usElection.submitStateResult(stateResults)).to.be.revertedWith(
+      "States must have at least 1 seat"
+    );
+  });
+
+  it("Should throw when try to submit state results without being the owner", async function () {
+    const stateResults: USElection.StateResultStruct = {
+      name: "Miami",
+      votesBiden: 2000,
+      votesTrump: 900,
+      stateSeats: 39,
+    };
+
+    const [signer0, signer1] = await ethers.getSigners();
+
+    const usElectionWithSigner1 = usElection.connect(signer1);
+
+    expect(usElectionWithSigner1.submitStateResult(stateResults)).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+  });
+
+  it("Should throw when try to submit state results with a tie", async function () {
+    const stateResults: USElection.StateResultStruct = {
+      name: "Texas",
+      votesBiden: 1000,
+      votesTrump: 1000,
+      stateSeats: 32,
+    };
+
+    expect(usElection.submitStateResult(stateResults)).to.be.revertedWith(
+      "There cannot be a tie"
+    );
   });
 
   it("Should end the elections, get the leader and election status", async function () {
@@ -65,5 +124,32 @@ describe("USElection", function () {
     expect(await usElection.electionEnded()).to.equal(true); // Ended
   });
 
-  //TODO: ADD YOUR TESTS
+  it("Should throw when try to end election without being the owner", async function () {
+    const [signer0, signer1] = await ethers.getSigners();
+
+    const usElectionWithSigner1 = usElection.connect(signer1);
+
+    expect(usElectionWithSigner1.endElection()).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+  });
+
+  it("Should throw when try to end election twice", async function () {
+    expect(usElection.endElection()).to.be.revertedWith(
+      "The election has ended already"
+    );
+  });
+
+  it("Should throw when try to submit state results after election ended", async function () {
+    const stateResults: USElection.StateResultStruct = {
+      name: "Texas",
+      votesBiden: 1000,
+      votesTrump: 900,
+      stateSeats: 32,
+    };
+
+    expect(usElection.submitStateResult(stateResults)).to.be.revertedWith(
+      "The election has ended already"
+    );
+  });
 });
